@@ -1,0 +1,128 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.34.5.
+--
+-- see: https://github.com/sol/hpack
+
+name:           fuzzyibe
+version:        0.1.3.0
+synopsis:       Implementation of Fuzzy IBE in Haskell
+category:       Cryptography
+homepage:       https://github.com/octeep/fuzzyibe#readme
+bug-reports:    https://github.com/octeep/fuzzyibe/issues
+author:         octeep
+maintainer:     octeep
+copyright:      2021 octeep
+license:        MIT
+build-type:     Simple
+extra-source-files:
+    README.md
+    CHANGELOG.md
+
+source-repository head
+  type: git
+  location: https://github.com/octeep/fuzzyibe
+
+library
+  other-modules:
+      Paths_fuzzyibe
+  hs-source-dirs:
+      src
+  default-extensions:
+      NoImplicitPrelude
+      ConstraintKinds
+      DataKinds
+      DeriveGeneric
+      FlexibleContexts
+      FlexibleInstances
+      GeneralizedNewtypeDeriving
+      LambdaCase
+      MultiParamTypeClasses
+      OverloadedLists
+      OverloadedStrings
+      PatternSynonyms
+      RankNTypes
+      RecordWildCards
+      ScopedTypeVariables
+      TypeFamilyDependencies
+  build-depends:
+      base >=4.7 && <5
+    , containers
+    , elliptic-curve
+    , galois-field
+    , groups
+    , pairing
+    , protolude
+    , random
+  default-language: Haskell2010
+
+executable fuzzyibe
+  main-is: FuzzyIBE/Main.hs
+  other-modules:
+      Paths_fuzzyibe
+  hs-source-dirs:
+      app
+  default-extensions:
+      NoImplicitPrelude
+      ConstraintKinds
+      DataKinds
+      DeriveGeneric
+      FlexibleContexts
+      FlexibleInstances
+      GeneralizedNewtypeDeriving
+      LambdaCase
+      MultiParamTypeClasses
+      OverloadedLists
+      OverloadedStrings
+      PatternSynonyms
+      RankNTypes
+      RecordWildCards
+      ScopedTypeVariables
+      TypeFamilyDependencies
+  build-depends:
+      base >=4.7 && <5
+    , containers
+    , elliptic-curve
+    , fuzzyibe
+    , galois-field
+    , groups
+    , pairing
+    , protolude
+    , random
+  default-language: Haskell2010
+
+test-suite fuzzyibe-test
+  type: exitcode-stdio-1.0
+  main-is: Test.hs
+  other-modules:
+      Paths_fuzzyibe
+  hs-source-dirs:
+      test
+  default-extensions:
+      NoImplicitPrelude
+      ConstraintKinds
+      DataKinds
+      DeriveGeneric
+      FlexibleContexts
+      FlexibleInstances
+      GeneralizedNewtypeDeriving
+      LambdaCase
+      MultiParamTypeClasses
+      OverloadedLists
+      OverloadedStrings
+      PatternSynonyms
+      RankNTypes
+      RecordWildCards
+      ScopedTypeVariables
+      TypeFamilyDependencies
+  build-depends:
+      base >=4.7 && <5
+    , containers
+    , elliptic-curve
+    , fuzzyibe
+    , galois-field
+    , groups
+    , pairing
+    , protolude
+    , random
+  default-language: Haskell2010

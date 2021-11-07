@@ -1,0 +1,59 @@
+author: "octeep"
+category: Cryptography
+copyright: "2021 octeep"
+github: "octeep/fuzzyibe"
+license: MIT
+maintainer: "octeep"
+name: "fuzzyibe"
+synopsis: "Implementation of Fuzzy IBE in Haskell"
+version: 0.1.3.0
+
+extra-source-files:
+  - README.md
+  - CHANGELOG.md
+
+default-extensions:
+  - NoImplicitPrelude
+  - ConstraintKinds
+  - DataKinds
+  - DeriveGeneric
+  - FlexibleContexts
+  - FlexibleInstances
+  - GeneralizedNewtypeDeriving
+  - LambdaCase
+  - MultiParamTypeClasses
+  - OverloadedLists
+  - OverloadedStrings
+  - PatternSynonyms
+  - RankNTypes
+  - RecordWildCards
+  - ScopedTypeVariables
+  - TypeFamilyDependencies
+
+
+dependencies:
+  - base >= 4.7 && < 5
+  - pairing 
+  - protolude
+  - groups
+  - elliptic-curve
+  - galois-field
+  - containers
+  - random
+
+library:
+  source-dirs: src
+
+executables:
+  fuzzyibe:
+    main: FuzzyIBE/Main.hs
+    source-dirs: app
+    dependencies:
+      - fuzzyibe
+
+tests:
+  fuzzyibe-test:
+    main: Test.hs
+    source-dirs: test
+    dependencies:
+      - fuzzyibe
