@@ -17,21 +17,6 @@ import qualified Data.Map as Map
 mul' :: (Curve f c e q r, PrimeField n) => Point f c e q r -> n -> Point f c e q r
 mul' p = W.mul' p . fromP
 
-y :: Fr
-y = 2391049785704108062206460176992743369171336801136428757185510197763030434892923936573505657337893227059857166120
-
-g1 :: G1 BLS12381
-g1 = mul' gen y
-
-g2 :: G1 BLS12381
-g2 = mul' gen (3857874365743587436587435743658743 :: Fr) -- randomly chosen
-
-p :: G1 BLS12381
-p = mul' gen (3432432432432432432 :: Fr)
-
-q :: G2 BLS12381
-q = mul' gen (837587436533242 :: Fr)
-
 -- Langrange coefficient
 bigDelta :: Fr -> [Fr] -> Fr -> Fr
 bigDelta i s x = product $ f <$> delete i s
@@ -66,15 +51,15 @@ encrypt g1 g2 h identity message = do
     where
         alpha r mui = pow (g1 <> h mui) r
 
-decrypt :: Int -> IdentityAttributes -> PrivateKey -> Ciphertext -> Maybe (GT BLS12381)
-decrypt d identity (PrivateKey keyId key) (Ciphertext identity' u v w) 
+decrypt :: Int -> PrivateKey -> Ciphertext -> Maybe (GT BLS12381)
+decrypt d (PrivateKey identity key) (Ciphertext identity' u v w) 
     | length s /= d = Nothing
     | otherwise = Just $ a <> invert b <> w
     where
-        a = let alpha = zip keyId $ fst <$> key
+        a = let alpha = filter (\(mu,x) -> mu `elem` s) $ zip identity $ fst <$> key
                 beta = fold $ (\(mu,gamma) -> mul' gamma $ bigDelta mu s 0) <$> alpha
             in pairing beta u
-        b = let alpha = zip keyId $ snd <$> key
+        b = let alpha = filter (\(mu,x) -> mu `elem` s) $ zip identity $ snd <$> key
                 beta = zip identity' v
             in fold $ (\(mu,delta) -> 
                 let Just v' = lookup mu beta
@@ -83,17 +68,25 @@ decrypt d identity (PrivateKey keyId key) (Ciphertext identity' u v w)
 
 main :: IO ()
 main = do
-  let n = 11
-  t <- replicateM n (randomIO :: IO (G1 BLS12381))
-  -- print $ capitalT t g2 10
-  putText "P:"
-  -- print p
-  putText "Q:"
-  -- print q
-  putText "e(P, Q):"
-  -- print (pairing p q)
-  putText "e(P, Q) is bilinear:"
-  -- print $ (pairing (mul' p $ b / a) (mul' q a)) == (pow (pairing p q) $ fromP b)
-  where
-    a = 343589748935193532478232933756825304602106207488058460712643352775646519130098395102608149477650462734276615378482 :: Fr
-    b = 2769269168754130569474552972236904986905114131799047802595049097418455054134936404134120240363874383150058360924296 :: Fr
+    putText "joe mama"
+    let d = 5
+    let h = pow gen . fromP
+    s <- randomIO :: IO Fr -- master key of the PKG
+    g1 <- randomIO :: IO (G1 BLS12381) -- public
+    let g2 = mul' gen s :: G2 BLS12381 -- public
+    print "creating alice identity"
+    aliceIdentity <- replicateM 8 (randomIO :: IO Fr)
+    print "pkg creating key for alice"
+    aliceKey <- keyGeneration d s h aliceIdentity
+    print "creating random identity for testing"
+    encryptIdentity <- (take (d+1) aliceIdentity ++) <$> replicateM 5 (randomIO :: IO Fr)
+    print "creating message"
+    message <- randomIO :: IO (GT BLS12381)
+    print "message:"
+    print message
+    print "encrypting"
+    ciphertext <- encrypt g1 g2 h encryptIdentity message
+    print "alice decrypting"
+    case decrypt d aliceKey ciphertext of
+        Nothing -> print "bruh"
+        Just message' -> print $ message' == message
