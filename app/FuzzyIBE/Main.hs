@@ -1,14 +1,17 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
+
 module Main where
 
 import Protolude
 
-import Data.Curve (Curve)
-import Data.Curve.Weierstrass (Point(A), gen)
-import Data.Field.Galois (fromP, toP, Prime, PrimeField)
-import Data.Group (pow, invert)
+import Data.Curve (Curve, Form (Weierstrass))
+import Data.Curve.Weierstrass (Point(A), gen, WCurve)
+import Data.Field.Galois (fromP, toP, Prime, PrimeField, GaloisField)
+import Data.Group (pow, invert, Group)
 import Data.List ((!!), delete, intersect, lookup)
 import Data.Map (Map)
-import Data.Pairing.BLS12381 (BLS12381, G1, G2, GT, pairing, Fr)
+import Data.Pairing (Pairing, pairing, G1, G2, GT)
+import Data.Pairing.BLS12381 (BLS12381, Fr)
 import Data.Set (Set)
 import System.Random
 import qualified Data.Curve.Weierstrass as W
@@ -18,21 +21,23 @@ mul' :: (Curve f c e q r, PrimeField n) => Point f c e q r -> n -> Point f c e q
 mul' p = W.mul' p . fromP
 
 -- Langrange coefficient
-bigDelta :: Fr -> [Fr] -> Fr -> Fr
+bigDelta :: (Fractional a, Eq a) => a -> [a] -> a -> a
 bigDelta i s x = product $ f <$> delete i s
     where f j = (x - j) / (i - j)
 
-type IdentityAttributes = [Fr]
+type IdentityAttributes r = [r]
 
-type HashFunction = Fr -> G1 BLS12381
+data PrivateKey r a = PrivateKey (IdentityAttributes r) [(G1 a, G2 a)]
 
-data PrivateKey = PrivateKey IdentityAttributes [(G1 BLS12381, G2 BLS12381)]
+data Ciphertext r a = Ciphertext (IdentityAttributes r) (G2 a) [G1 a] (GT a)
 
-data Ciphertext = Ciphertext IdentityAttributes (G2 BLS12381) [G1 BLS12381] (GT BLS12381)
-
-keyGeneration :: Int -> Fr -> HashFunction -> IdentityAttributes -> IO PrivateKey
+keyGeneration
+  :: (Curve f c e q r, MonadIO m, PrimeField k,
+     Group (G1 a), G2 a ~ Point f c e q r) =>
+     Int
+     -> k -> (k -> G1 a) -> IdentityAttributes k -> m (PrivateKey k a)
 keyGeneration d s h identity = do
-    cef <- (s :) <$> replicateM (d-1) (randomIO :: IO Fr)
+    cef <- (s :) <$> replicateM (d-1) randomIO 
     return $ PrivateKey identity (dee (poly cef) <$> identity)
     where
         dee p mui = 
@@ -40,13 +45,25 @@ keyGeneration d s h identity = do
             in (pow (h mui) pmui, pow gen pmui)
         poly cef x = sum $ (\(a,b) -> a * pow x b) <$> zip cef [0..]
 
+encrypt
+  :: (Curve f c e q r, Pairing a, G2 a ~ Point f c e q r) =>
+     G1 a
+     -> Point f c e q r
+     -> (t -> G1 a)
+     -> IdentityAttributes t
+     -> GT a
+     -> IO (Ciphertext t a)
+encrypt g1 g2 h identity message = encryptDeterminsitic g1 g2 h identity message <$> (randomIO :: IO Fr)
 
-encrypt :: G1 BLS12381 -> G2 BLS12381 -> HashFunction -> IdentityAttributes -> GT BLS12381 -> IO Ciphertext
-encrypt g1 g2 h identity message = encryptDeterminsitic g1 g2 h identity message <$> randomIO
-
--- g1 is randomly chosen
--- g2 = gen^s
-encryptDeterminsitic :: G1 BLS12381 -> G2 BLS12381 -> HashFunction -> IdentityAttributes -> GT BLS12381 -> Fr -> Ciphertext
+encryptDeterminsitic
+  :: (Curve f c e q r, Pairing a, PrimeField k, G2 a ~ Point f c e q r) =>
+     G1 a
+     -> Point f c e q r
+     -> (t -> G1 a)
+     -> IdentityAttributes t
+     -> GT a
+     -> k
+     -> Ciphertext t a
 encryptDeterminsitic g1 g2 h identity message r = 
     let r' = fromP r -- pow with Fr exponent will get stuck for some reason
         gr = pow gen r'
@@ -55,7 +72,11 @@ encryptDeterminsitic g1 g2 h identity message r =
     where
         alpha r' mui = pow (g1 <> h mui) r'
 
-decrypt :: Int -> PrivateKey -> Ciphertext -> Maybe (GT BLS12381)
+decrypt
+  :: (Pairing e1, Curve f1 c1 e2 q1 r1, Curve f2 c2 e3 q2 r2,
+      PrimeField a, G2 e1 ~ Point f1 c1 e2 q1 r1,
+      G1 e1 ~ Point f2 c2 e3 q2 r2) =>
+     Int -> PrivateKey a e1 -> Ciphertext a e1 -> Maybe (GT e1)
 decrypt d (PrivateKey identity key) (Ciphertext identity' u v w) 
     | length s /= d = Nothing
     | otherwise = Just $ a <> invert b <> w
