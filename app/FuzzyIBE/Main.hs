@@ -40,16 +40,20 @@ keyGeneration d s h identity = do
             in (pow (h mui) pmui, pow gen pmui)
         poly cef x = sum $ (\(a,b) -> a * pow x b) <$> zip cef [0..]
 
+
+encrypt :: G1 BLS12381 -> G2 BLS12381 -> HashFunction -> IdentityAttributes -> GT BLS12381 -> IO Ciphertext
+encrypt g1 g2 h identity message = encryptDeterminsitic g1 g2 h identity message <$> randomIO
+
 -- g1 is randomly chosen
 -- g2 = gen^s
-encrypt :: G1 BLS12381 -> G2 BLS12381 -> HashFunction -> IdentityAttributes -> GT BLS12381 -> IO Ciphertext
-encrypt g1 g2 h identity message = do
-    r <- fromP <$> (randomIO :: IO Fr)
-    let gr = pow gen r
-    let w = pow (pairing g1 g2) r <> message
-    return $ Ciphertext identity gr (alpha r <$> identity) w
+encryptDeterminsitic :: G1 BLS12381 -> G2 BLS12381 -> HashFunction -> IdentityAttributes -> GT BLS12381 -> Fr -> Ciphertext
+encryptDeterminsitic g1 g2 h identity message r = 
+    let r' = fromP r -- pow with Fr exponent will get stuck for some reason
+        gr = pow gen r'
+        w = pow (pairing g1 g2) r' <> message
+    in Ciphertext identity gr (alpha r' <$> identity) w
     where
-        alpha r mui = pow (g1 <> h mui) r
+        alpha r' mui = pow (g1 <> h mui) r'
 
 decrypt :: Int -> PrivateKey -> Ciphertext -> Maybe (GT BLS12381)
 decrypt d (PrivateKey identity key) (Ciphertext identity' u v w) 
