@@ -1,5 +1,3 @@
-{-# LANGUAGE TupleSections #-}
-
 module Main where
 
 import Protolude
@@ -8,9 +6,9 @@ import Data.Curve (Curve)
 import Data.Curve.Weierstrass (Point(A), gen)
 import Data.Field.Galois (fromP, toP, Prime, PrimeField)
 import Data.Group (pow, invert)
-import Data.List ((!!), delete)
+import Data.List ((!!), delete, intersect, lookup)
 import Data.Map (Map)
-import Data.Pairing.BLS12381 (BLS12381, G1, G2, pairing, Fr)
+import Data.Pairing.BLS12381 (BLS12381, G1, G2, GT, pairing, Fr)
 import Data.Set (Set)
 import System.Random
 import qualified Data.Curve.Weierstrass as W
@@ -35,36 +33,59 @@ q :: G2 BLS12381
 q = mul' gen (837587436533242 :: Fr)
 
 -- Langrange coefficient
-delta :: Fr -> [Fr] -> Fr -> Fr
-delta i s x = product $ f <$> delete i s
+bigDelta :: Fr -> [Fr] -> Fr -> Fr
+bigDelta i s x = product $ f <$> delete i s
     where f j = (x - j) / (i - j)
 
-capitalT :: [G1 BLS12381] -> G1 BLS12381 -> Fr -> G1 BLS12381 
-capitalT t g2 x = pow g2 (fromP (x * toP n)) <> fold (f <$> n')
-    where  
-        f (t', i) = pow t' (delta i n'' x)
-        n = toInteger $ length t 
-        n' = zip t [1..]
-        n'' = toP <$> [1..(n+1)]
+type IdentityAttributes = [Fr]
 
-data PrivateKey = PrivateKey [G1 BLS12381] [G1 BLS12381]
+type HashFunction = Fr -> G1 BLS12381
 
-keyGeneration :: Int -> G1 BLS12381 -> [G1 BLS12381] -> Fr -> [Fr] -> IO PrivateKey 
-keyGeneration d g2 t y w = do
-    cef <- (y :) <$> replicateM (d-1) (randomIO :: IO Fr)
-    r <- Map.fromList <$> mapM (\x -> (x,) <$> (randomIO :: IO Fr)) w
-    let q = poly cef
-    let bigD = (\i -> pow g2 (q i) <> pow (capitalT t g2 i) (r Map.! i)) <$> w
-    let smallD = (\i -> pow g2 (r Map.! i)) <$> w
-    return $ PrivateKey bigD smallD
-    where 
+data PrivateKey = PrivateKey IdentityAttributes [(G1 BLS12381, G2 BLS12381)]
+
+data Ciphertext = Ciphertext IdentityAttributes (G2 BLS12381) [G1 BLS12381] (GT BLS12381)
+
+keyGeneration :: Int -> Fr -> HashFunction -> IdentityAttributes -> IO PrivateKey
+keyGeneration d s h identity = do
+    cef <- (s :) <$> replicateM (d-1) (randomIO :: IO Fr)
+    return $ PrivateKey identity (dee (poly cef) <$> identity)
+    where
+        dee p mui = 
+            let pmui = fromP $ p mui 
+            in (pow (h mui) pmui, pow gen pmui)
         poly cef x = sum $ (\(a,b) -> a * pow x b) <$> zip cef [0..]
+
+-- g1 is randomly chosen
+-- g2 = gen^s
+encrypt :: G1 BLS12381 -> G2 BLS12381 -> HashFunction -> IdentityAttributes -> GT BLS12381 -> IO Ciphertext
+encrypt g1 g2 h identity message = do
+    r <- fromP <$> (randomIO :: IO Fr)
+    let gr = pow gen r
+    let w = pow (pairing g1 g2) r <> message
+    return $ Ciphertext identity gr (alpha r <$> identity) w
+    where
+        alpha r mui = pow (g1 <> h mui) r
+
+decrypt :: Int -> IdentityAttributes -> PrivateKey -> Ciphertext -> Maybe (GT BLS12381)
+decrypt d identity (PrivateKey keyId key) (Ciphertext identity' u v w) 
+    | length s /= d = Nothing
+    | otherwise = Just $ a <> invert b <> w
+    where
+        a = let alpha = zip keyId $ fst <$> key
+                beta = fold $ (\(mu,gamma) -> mul' gamma $ bigDelta mu s 0) <$> alpha
+            in pairing beta u
+        b = let alpha = zip keyId $ snd <$> key
+                beta = zip identity' v
+            in fold $ (\(mu,delta) -> 
+                let Just v' = lookup mu beta
+                in pairing v' $ mul' delta $ bigDelta mu s 0) <$> alpha
+        s = take d $ intersect identity identity'
 
 main :: IO ()
 main = do
   let n = 11
   t <- replicateM n (randomIO :: IO (G1 BLS12381))
-  print $ capitalT t g2 10
+  -- print $ capitalT t g2 10
   putText "P:"
   -- print p
   putText "Q:"
