@@ -9,13 +9,11 @@ import Data.Curve.Weierstrass (Point(A), gen, WCurve)
 import Data.Field.Galois (fromP, toP, Prime, PrimeField, GaloisField)
 import Data.Group (pow, invert, Group)
 import Data.List ((!!), delete, intersect, lookup)
-import Data.Map (Map)
 import Data.Pairing (Pairing, pairing, G1, G2, GT)
 import Data.Pairing.BLS12381 (BLS12381, Fr)
 import Data.Set (Set)
 import System.Random
 import qualified Data.Curve.Weierstrass as W
-import qualified Data.Map as Map
 
 mul' :: (Curve f c e q r, PrimeField n) => Point f c e q r -> n -> Point f c e q r
 mul' p = W.mul' p . fromP
@@ -32,10 +30,9 @@ data PrivateKey r a = PrivateKey (IdentityAttributes r) [(G1 a, G2 a)]
 data Ciphertext r a = Ciphertext (IdentityAttributes r) (G2 a) [G1 a] (GT a)
 
 keyGeneration
-  :: (Curve f c e q r, MonadIO m, PrimeField k,
-     Group (G1 a), G2 a ~ Point f c e q r) =>
+  :: (Curve f c e q r, MonadIO m, Group (G1 a), G2 a ~ Point f c e q r) =>
      Int
-     -> k -> (k -> G1 a) -> IdentityAttributes k -> m (PrivateKey k a)
+     -> r -> (r -> G1 a) -> IdentityAttributes r -> m (PrivateKey r a)
 keyGeneration d s h identity = do
     cef <- (s :) <$> replicateM (d-1) randomIO 
     return $ PrivateKey identity (dee (poly cef) <$> identity)
@@ -49,21 +46,21 @@ encrypt
   :: (Curve f c e q r, Pairing a, G2 a ~ Point f c e q r) =>
      G1 a
      -> Point f c e q r
-     -> (t -> G1 a)
-     -> IdentityAttributes t
+     -> (r -> G1 a)
+     -> IdentityAttributes r
      -> GT a
-     -> IO (Ciphertext t a)
+     -> IO (Ciphertext r a)
 encrypt g1 g2 h identity message = encryptDeterminsitic g1 g2 h identity message <$> (randomIO :: IO Fr)
 
 encryptDeterminsitic
   :: (Curve f c e q r, Pairing a, PrimeField k, G2 a ~ Point f c e q r) =>
      G1 a
      -> Point f c e q r
-     -> (t -> G1 a)
-     -> IdentityAttributes t
+     -> (r -> G1 a)
+     -> IdentityAttributes r
      -> GT a
      -> k
-     -> Ciphertext t a
+     -> Ciphertext r a
 encryptDeterminsitic g1 g2 h identity message r = 
     let r' = fromP r -- pow with Fr exponent will get stuck for some reason
         gr = pow gen r'
