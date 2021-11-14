@@ -39,6 +39,8 @@ dependencies:
   - elliptic-curve
   - galois-field
   - containers
+  - unordered-containers
+  - hashable
   - random
 
 library:
