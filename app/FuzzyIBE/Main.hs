@@ -54,23 +54,23 @@ keyGeneration d s h identity = do
         poly cef x = sum $ (\(a,b) -> a * pow x b) <$> zip cef [0..]
 
 encrypt
-  :: (Curve f c e q r, Pairing a, G2 a ~ Point f c e q r, Hashable r, Hashable (G1 a)) =>
+  :: (Curve f c e q r, Pairing a, PrimeField r, G2 a ~ Point f c e q r, Hashable r, Hashable (G1 a)) =>
      G1 a
      -> Point f c e q r
      -> (r -> G1 a)
      -> IdentityAttributes r
      -> GT a
      -> IO (Ciphertext r a)
-encrypt g1 g2 h identity message = encryptDeterminsitic g1 g2 h identity message <$> (randomIO :: IO Fr)
+encrypt g1 g2 h identity message = encryptDeterminsitic g1 g2 h identity message <$> randomIO 
 
 encryptDeterminsitic
-  :: (Curve f c e q r, Pairing a, PrimeField k, G2 a ~ Point f c e q r, Hashable r, Hashable (G1 a)) =>
+  :: (Curve f c e q r, Pairing a, PrimeField r, G2 a ~ Point f c e q r, Hashable r, Hashable (G1 a)) =>
      G1 a
      -> Point f c e q r
      -> (r -> G1 a)
      -> IdentityAttributes r
      -> GT a
-     -> k
+     -> r
      -> Ciphertext r a
 encryptDeterminsitic g1 g2 h identity message r = 
     let r' = fromP r -- pow with Fr exponent will get stuck for some reason
