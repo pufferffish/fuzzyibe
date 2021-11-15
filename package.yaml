@@ -10,7 +10,6 @@ version: 0.1.3.0
 
 extra-source-files:
   - README.md
-  - CHANGELOG.md
 
 default-extensions:
   - NoImplicitPrelude
@@ -59,3 +58,5 @@ tests:
     source-dirs: test
     dependencies:
       - fuzzyibe
+      - tasty-hunit
+      - tasty

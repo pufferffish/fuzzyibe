@@ -17,13 +17,14 @@ license:        MIT
 build-type:     Simple
 extra-source-files:
     README.md
-    CHANGELOG.md
 
 source-repository head
   type: git
   location: https://github.com/octeep/fuzzyibe
 
 library
+  exposed-modules:
+      FuzzyIBE.Baek
   other-modules:
       Paths_fuzzyibe
   hs-source-dirs:
@@ -130,5 +131,7 @@ test-suite fuzzyibe-test
     , pairing
     , protolude
     , random
+    , tasty
+    , tasty-hunit
     , unordered-containers
   default-language: Haskell2010
