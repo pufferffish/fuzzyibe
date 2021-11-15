@@ -15,13 +15,11 @@ main = do
     putText "joe mama"
     let d = 5
     let h = pow gen . fromP . pow (7 :: Fr)
-    s <- randomIO :: IO Fr -- master key of the PKG
-    g1 <- randomIO :: IO (G1 BLS12381) -- public
-    let g2 = mul' gen $ fromP s :: G2 BLS12381 -- public
+    (pkgPrivateKey, publicParams :: PublicParameter BLS12381 Fr) <- constructParameters d h
     print "creating alice identity"
     aliceIdentity <- Set.fromList <$> replicateM 8 (randomIO :: IO Fr)
     print "pkg creating key for alice"
-    aliceKey <- keyGeneration d s h aliceIdentity
+    aliceKey <- keyGeneration publicParams pkgPrivateKey aliceIdentity
     print "creating random identity for testing"
     encryptIdentity <- Set.fromList . ((take (d+1) $ Set.toList aliceIdentity) `mappend`) <$> replicateM 5 (randomIO :: IO Fr)
     print "creating message"
@@ -29,9 +27,9 @@ main = do
     print "message:"
     print message
     print "encrypting"
-    ciphertext <- encrypt g1 g2 h encryptIdentity message
+    ciphertext <- encrypt publicParams encryptIdentity message
     print "alice decrypting"
-    case decrypt d aliceKey ciphertext of
+    case decrypt publicParams aliceKey ciphertext of
         Nothing -> print "bruh"
         Just message' -> print $ message' == message
 

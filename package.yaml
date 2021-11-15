@@ -42,6 +42,7 @@ dependencies:
   - unordered-containers
   - hashable
   - random
+  - cryptonite
 
 library:
   source-dirs: src

@@ -4,11 +4,14 @@
 module FuzzyIBE.Baek 
 ( randomScalar
 , IdentityAttributes
+, PKGPrivateParameter(..)
+, PublicParameter(..)
 , PrivateKey
 , Ciphertext
 , keyGeneration
 , encrypt
 , encryptDeterminsitic
+, constructParameters
 , decrypt
 )
 where
@@ -25,7 +28,6 @@ import Data.Hashable
 import Data.List ((!!), delete, intersect, lookup)
 import Data.Map (Map)
 import Data.Pairing (Pairing, pairing, G1, G2, GT)
-import System.Random
 import Crypto.Number.Generate
 import Crypto.Random.Types
 import qualified Data.Curve.Weierstrass as W
@@ -50,6 +52,33 @@ randomScalar = fromInteger <$> generateBetween 1 (fromP (maxBound :: b))
 
 type IdentityAttributes r = HashSet r
 
+newtype PKGPrivateParameter r = PKGPrivateParameter r
+
+data PublicParameter a r = PublicParameter { 
+  d :: Int -- error tolerance
+, g1 :: G1 a
+, g2 :: G2 a
+, h :: r -> G1 a -- hash function from Identity to Point 
+}
+
+constructParameters :: forall (f :: Form) (c :: W.Coordinates) e q r a 
+    (f2 :: Form) (c2 :: W.Coordinates) e2 q2 r2 (m :: * -> *). 
+    ( Curve f c e q r
+    , Curve f2 c2 e2 q2 r2
+    , Pairing a
+    , G2 a ~ Point f c e q r
+    , G1 a ~ Point f2 c2 e2 q2 r2
+    , MonadRandom m
+    , Bounded r
+    , PrimeField r
+    , Group (G1 a)) => 
+    Int -> (r -> G1 a) -> m (PKGPrivateParameter r, PublicParameter a r)
+constructParameters d h = do
+    s <- randomScalar :: m r
+    g1 <- pow (gen :: G1 a) <$> (randomScalar :: m r)
+    let g2 = pow gen s
+    return (PKGPrivateParameter s, PublicParameter d g1 g2 h)
+
 newtype PrivateKey r a = PrivateKey (Map r (G1 a, G2 a))
 
 data Ciphertext r a = Ciphertext (Map r (G1 a)) (G2 a) (GT a)
@@ -62,8 +91,8 @@ setAssocMap f set = Map.fromList $ Set.toList $ Set.map (\x -> (x, f x)) set
 
 keyGeneration
   :: (Curve f c e q r, MonadRandom m, Group (G1 a), G2 a ~ Point f c e q r, Bounded r, Hashable r, Hashable (G1 a), Eq (G1 a)) =>
-     Int -> r -> (r -> G1 a) -> IdentityAttributes r -> m (PrivateKey r a)
-keyGeneration d s h identity = do
+     PublicParameter a r -> PKGPrivateParameter r -> IdentityAttributes r -> m (PrivateKey r a)
+keyGeneration (PublicParameter d g1 g2 h) (PKGPrivateParameter s) identity = do
     cef <- (s :) <$> replicateM (d-1) randomScalar
     return $ PrivateKey $ setAssocMap (alpha (poly cef)) identity
     where
@@ -74,24 +103,20 @@ keyGeneration d s h identity = do
 
 encrypt
   :: (Curve f c e q r, Pairing a, PrimeField r, Bounded r, G2 a ~ Point f c e q r, Hashable r, Hashable (G1 a), MonadRandom m) =>
-     G1 a
-     -> Point f c e q r
-     -> (r -> G1 a)
+     PublicParameter a r
      -> IdentityAttributes r
      -> GT a
      -> m (Ciphertext r a)
-encrypt g1 g2 h identity message = encryptDeterminsitic g1 g2 h identity message <$> randomScalar
+encrypt p@(PublicParameter d g1 g2 h) identity message = encryptDeterminsitic p identity message <$> randomScalar
 
 encryptDeterminsitic
   :: (Curve f c e q r, Pairing a, PrimeField r, G2 a ~ Point f c e q r, Hashable r, Hashable (G1 a)) =>
-     G1 a
-     -> Point f c e q r
-     -> (r -> G1 a)
+     PublicParameter a r
      -> IdentityAttributes r
      -> GT a
      -> r
      -> Ciphertext r a
-encryptDeterminsitic g1 g2 h identity message r = 
+encryptDeterminsitic (PublicParameter d g1 g2 h) identity message r = 
     let gr = pow gen r
         w = pow (pairing g1 g2) r <> message
     in Ciphertext (setAssocMap alpha identity) gr w
@@ -99,11 +124,10 @@ encryptDeterminsitic g1 g2 h identity message r =
         alpha mui = pow (g1 <> h mui) r
 
 decrypt
-  :: (Pairing e1, Curve f1 c1 e2 q1 r1, Curve f2 c2 e3 q2 r2,
-      PrimeField a, G2 e1 ~ Point f1 c1 e2 q1 r1,
-      G1 e1 ~ Point f2 c2 e3 q2 r2) =>
-     Int -> PrivateKey a e1 -> Ciphertext a e1 -> Maybe (GT e1)
-decrypt d (PrivateKey keyPair) (Ciphertext idv u w) 
+  :: (Pairing e1, Curve f1 c1 e2 q1 r1, Curve f2 c2 e3 q2 r1, PrimeField r1,
+      G1 e1 ~ Point f2 c2 e3 q2 r1, G2 e1 ~ Point f1 c1 e2 q1 r1) =>
+     PublicParameter e1 r1 -> PrivateKey r1 e1 -> Ciphertext r1 e1 -> Maybe (GT e1)
+decrypt (PublicParameter d g1 g2 h) (PrivateKey keyPair) (Ciphertext idv u w) 
     | length s /= d = Nothing
     | otherwise = Just $ a <> invert b <> w
     where

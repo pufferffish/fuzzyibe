@@ -13,10 +13,12 @@ bug-reports:    https://github.com/octeep/fuzzyibe/issues
 author:         octeep
 maintainer:     octeep
 copyright:      2021 octeep
-license:        MIT
+license:        ISC
+license-file:   LICENSE
 build-type:     Simple
 extra-source-files:
     README.md
+    LICENSE
 
 source-repository head
   type: git
@@ -49,6 +51,7 @@ library
   build-depends:
       base >=4.7 && <5
     , containers
+    , cryptonite
     , elliptic-curve
     , galois-field
     , groups
@@ -85,6 +88,7 @@ executable fuzzyibe
   build-depends:
       base >=4.7 && <5
     , containers
+    , cryptonite
     , elliptic-curve
     , fuzzyibe
     , galois-field
@@ -123,6 +127,7 @@ test-suite fuzzyibe-test
   build-depends:
       base >=4.7 && <5
     , containers
+    , cryptonite
     , elliptic-curve
     , fuzzyibe
     , galois-field
