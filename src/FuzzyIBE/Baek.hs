@@ -92,12 +92,11 @@ encryptDeterminsitic
      -> r
      -> Ciphertext r a
 encryptDeterminsitic g1 g2 h identity message r = 
-    let r' = r -- pow with Fr exponent will get stuck for some reason
-        gr = pow gen r'
-        w = pow (pairing g1 g2) r' <> message
-    in Ciphertext (setAssocMap (alpha r') identity) gr w
+    let gr = pow gen r
+        w = pow (pairing g1 g2) r <> message
+    in Ciphertext (setAssocMap alpha identity) gr w
     where
-        alpha r' mui = pow (g1 <> h mui) r'
+        alpha mui = pow (g1 <> h mui) r
 
 decrypt
   :: (Pairing e1, Curve f1 c1 e2 q1 r1, Curve f2 c2 e3 q2 r2,
