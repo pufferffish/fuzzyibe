@@ -43,14 +43,15 @@ dependencies:
   - hashable
   - random
   - cryptonite
+  - memory
 
 library:
   source-dirs: src
 
 executables:
   fuzzyibe:
-    main: FuzzyIBE/Main.hs
-    source-dirs: app
+    main: Main.hs
+    source-dirs: examples
     dependencies:
       - fuzzyibe
 

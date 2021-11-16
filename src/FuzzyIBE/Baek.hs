@@ -3,6 +3,7 @@
 
 module FuzzyIBE.Baek 
 ( randomScalar
+, randomPoint
 , IdentityAttributes
 , PKGPrivateParameter(..)
 , PublicParameter(..)
@@ -47,8 +48,11 @@ bigDelta i s x = product $ f <$> s
     where f j | i == j = 1
               | otherwise = (x - j) / (i - j)
 
-randomScalar :: forall m b. (Bounded b, PrimeField b, MonadRandom m) => m b
-randomScalar = fromInteger <$> generateBetween 1 (fromP (maxBound :: b))
+randomScalar :: forall m b. (PrimeField b, MonadRandom m) => m b
+randomScalar = fromInteger <$> generateBetween 1 (fromP (-1 :: b))
+
+randomPoint :: forall f c e q r (m :: * -> *). (Curve f c e q r, PrimeField r, MonadRandom m) => m (Point f c e q r)
+randomPoint = pow gen <$> (randomScalar :: m r)
 
 type IdentityAttributes r = HashSet r
 
@@ -69,7 +73,6 @@ constructParameters :: forall (f :: Form) (c :: W.Coordinates) e q r a
     , G2 a ~ Point f c e q r
     , G1 a ~ Point f2 c2 e2 q2 r2
     , MonadRandom m
-    , Bounded r
     , PrimeField r
     , Group (G1 a)) => 
     Int -> (r -> G1 a) -> m (PKGPrivateParameter r, PublicParameter a r)
@@ -90,7 +93,7 @@ instance Show (Point f c e q r) => Hashable (Point f c e q r) where
 setAssocMap f set = Map.fromList $ Set.toList $ Set.map (\x -> (x, f x)) set
 
 keyGeneration
-  :: (Curve f c e q r, MonadRandom m, Group (G1 a), G2 a ~ Point f c e q r, Bounded r, Hashable r, Hashable (G1 a), Eq (G1 a)) =>
+  :: (Curve f c e q r, MonadRandom m, Group (G1 a), G2 a ~ Point f c e q r, Hashable r, Hashable (G1 a), Eq (G1 a)) =>
      PublicParameter a r -> PKGPrivateParameter r -> IdentityAttributes r -> m (PrivateKey r a)
 keyGeneration (PublicParameter d g1 g2 h) (PKGPrivateParameter s) identity = do
     cef <- (s :) <$> replicateM (d-1) randomScalar
@@ -102,12 +105,12 @@ keyGeneration (PublicParameter d g1 g2 h) (PKGPrivateParameter s) identity = do
         poly cef x = sum $ (\(a,b) -> a * Group.pow x b) <$> zip cef [0..]
 
 encrypt
-  :: (Curve f c e q r, Pairing a, PrimeField r, Bounded r, G2 a ~ Point f c e q r, Hashable r, Hashable (G1 a), MonadRandom m) =>
+  :: (Curve f c e q r, Pairing a, PrimeField r, G2 a ~ Point f c e q r, Hashable r, Hashable (G1 a), MonadRandom m) =>
      PublicParameter a r
      -> IdentityAttributes r
      -> GT a
      -> m (Ciphertext r a)
-encrypt p@(PublicParameter d g1 g2 h) identity message = encryptDeterminsitic p identity message <$> randomScalar
+encrypt p identity message = encryptDeterminsitic p identity message <$> randomScalar
 
 encryptDeterminsitic
   :: (Curve f c e q r, Pairing a, PrimeField r, G2 a ~ Point f c e q r, Hashable r, Hashable (G1 a)) =>

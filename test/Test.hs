@@ -5,7 +5,7 @@ import Data.Field.Galois (fromP, toP, Prime, PrimeField, GaloisField)
 import Data.Group (pow)
 import Data.Pairing.BLS12381 (BLS12381, Fr, G1, G2, GT)
 import FuzzyIBE.Baek
-import System.Random
+import FuzzyIBE.Random
 import Test.Tasty
 import Test.Tasty.HUnit
 import qualified Data.HashSet as Set
@@ -22,10 +22,10 @@ baekTestCorrectEncryptDecrypt = testCase "D(E(m)) = m" $ do
     let d = 5
     let h = pow gen . fromP . pow (7 :: Fr)
     (pkgPrivateKey, publicParams :: PublicParameter BLS12381 Fr) <- constructParameters d h
-    aliceIdentity <- Set.fromList <$> replicateM 8 (randomIO :: IO Fr)
+    aliceIdentity <- Set.fromList <$> replicateM 8 (randomCryptonite :: IO Fr)
     aliceKey <- keyGeneration publicParams pkgPrivateKey aliceIdentity
-    encryptIdentity <- Set.fromList . ((take (d+1) $ Set.toList aliceIdentity) `mappend`) <$> replicateM 5 (randomIO :: IO Fr)
-    message <- randomIO :: IO (GT BLS12381)
+    encryptIdentity <- Set.fromList . ((take (d+1) $ Set.toList aliceIdentity) `mappend`) <$> replicateM 5 (randomCryptonite :: IO Fr)
+    message <- randomCryptonite :: IO (GT BLS12381)
     ciphertext <- encrypt publicParams encryptIdentity message
 
     case decrypt publicParams aliceKey ciphertext of

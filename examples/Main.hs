@@ -11,7 +11,7 @@ import Data.Group (pow)
 import Data.Hashable
 import Data.Pairing.BLS12381 (BLS12381, Fr, G1, G2, GT)
 import FuzzyIBE.Baek
-import System.Random
+import FuzzyIBE.Random
 import qualified Data.HashSet as Set
 
 -- Encode strings like "manager" into Z/pZ
@@ -28,8 +28,11 @@ hashStringToFr = Set.map (toP . fromIntegral . hash)
 -- Here I used the input as a seed for a ChaCha determinstic random generator
 -- which is then used to generate a number uniformly randomly in the Galois field
 -- The generated number is then multiplied with the generator point
+--
+-- Note that supplying mul'/pow with a PrimeField will cause it to get stuck,
+-- not sure why
 hashFrToPoint :: Fr -> G1 BLS12381
-hashFrToPoint fr = mul' gen $ fst $ withDRG drg $ generateBetween 1 $ fromP (-1 :: Fr)
+hashFrToPoint fr = mul' gen $ fromP ((fst $ withDRG drg randomScalar) :: Fr)
     where 
         drg = drgNewSeed $ seedFromInteger $ fromP fr
 
@@ -56,7 +59,7 @@ main = do
     -- which is then used to derive an encryption key for a symmeteric cipher of your choosing (e.g. AES)
     -- The plaintext is encrypted with the derived key, and the point is encrypted with the Fuzzy IBE scheme.
     print "creating message"
-    message <- randomIO :: IO (GT BLS12381)
+    message <- randomCryptonite :: IO (GT BLS12381)
     print "message:"
     print message
 
