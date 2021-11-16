@@ -8,7 +8,7 @@ Fuzzy [Identity Based Encryption](https://en.wikipedia.org/wiki/Identity-based_e
 An example implementation of the aforementioned scenario can be found in [Main.hs](app/Main.hs).
 
 ## Disclaimer
-This project is created as a hobbyist project, and is not intended for any serious usage. The operations provided in the library, and elliptic curve library that this project is based on, are suspectible to timing attacks. Use at your own risk,
+This project is created as a hobbyist project, and is not intended for any serious usage. The operations provided in the library, and elliptic curve library that this project is based on, are suspectible to timing attacks. Use at your own risk.
 
 ## License
 See [LICENSE](LICENSE).
