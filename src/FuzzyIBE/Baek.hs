@@ -20,8 +20,7 @@ where
 import Protolude
 
 import Data.Bifunctor (first, second)
-import Data.Curve (Curve, Form (Weierstrass))
-import Data.Curve.Weierstrass (Point(A), gen, WCurve)
+import Data.Curve (Curve, Form, gen, Point)
 import Data.Field.Galois (fromP, toP, Prime, PrimeField, GaloisField)
 import Data.Group (invert, Group)
 import Data.HashSet (HashSet)
@@ -31,13 +30,13 @@ import Data.Map (Map)
 import Data.Pairing (Pairing, pairing, G1, G2, GT)
 import Crypto.Number.Generate
 import Crypto.Random.Types
-import qualified Data.Curve.Weierstrass as W
+import qualified Data.Curve as C
 import qualified Data.HashSet as Set
 import qualified Data.Map as Map
 import qualified Data.Group as Group
 
 mul' :: (Curve f c e q r, PrimeField n) => Point f c e q r -> n -> Point f c e q r
-mul' p = W.mul' p . fromP
+mul' p = C.mul' p . fromP
 
 pow :: (Group m, PrimeField x) => m -> x -> m
 pow b = Group.pow b . fromP
@@ -65,8 +64,8 @@ data PublicParameter a r = PublicParameter {
 , h :: r -> G1 a -- hash function from Identity to Point 
 }
 
-constructParameters :: forall (f :: Form) (c :: W.Coordinates) e q r a 
-    (f2 :: Form) (c2 :: W.Coordinates) e2 q2 r2 (m :: * -> *). 
+constructParameters :: forall (f :: Form) (c :: C.Coordinates) e q r a 
+    (f2 :: Form) (c2 :: C.Coordinates) e2 q2 r2 (m :: * -> *). 
     ( Curve f c e q r
     , Curve f2 c2 e2 q2 r2
     , Pairing a
